@@ -23,12 +23,40 @@ description: "Протокол ОРЗ — пошаговые инструкци�
 > **Триггер:** «открывай» / «открывай день». Полный алгоритм → `.claude/skills/day-open/SKILL.md`.
 > **Исполнение:** пошагово через TodoWrite (каждый шаг = задача, блокирующее). Аналогично Close.
 
+> **Вчерашний WakaTime (pending-мультипликатор):** в шаге 1 «Вчера» — проверить наличие `day_close` записи за вчера в Neon (`domain_event WHERE event_type='day_close' AND external_id='day-close-{вчера}'`). Если отсутствует: запросить WakaTime API `summaries?start={вчера}&end={вчера}` → пересчитать мультипликатор → дозаписать в domain_event. Причина: `--today` CLI не даёт данных за прошлый день (WP-299 Ф4 п.3).
+
 
 ## § Масштаб: Сессия (Session Open)
 
 > **Триггер:** Любое задание (кроме Day Open/Close).
 > **Роль:** R6 Кодировщик.
 > **Handoff:** WP context file = Human→Agent handoff. «Осталось» = Agent→Agent handoff.
+
+### Шаг 0. Маршрутизатор (DP.ROLE.059) — перед WP Gate
+
+> **Применять если:** входящий запрос содержит routing-tag (`skill=X`, `/X`, явный executor-hint).
+> **Пропустить (перейти к WP Gate):** свободный текст без явного тега — сначала нужно определить РП.
+
+```bash
+IWE_EXECUTOR_CATALOG={{HOME_DIR}}/IWE/DS-strategy/scripts/executor-catalog.yaml \
+bash {{HOME_DIR}}/IWE/scripts/route-task.sh --skill <skill-name>
+```
+
+**Если тег задан** → Маршрутизатор находит `executor` в executor-catalog.yaml → запускает нужный путь:
+- `executor: script` → прямой вызов script_path (без LLM)
+- `executor: haiku|sonnet|opus` → передать задание нужной модели через SKILL.md
+- `executor: mcp-direct` → вызвать MCP инструмент напрямую
+
+**Если тега нет** → вызвать `/artifactor` (DP.ROLE.058) — преобразует сырой запрос в structured request с routing-тегом:
+
+```bash
+python3 "${IWE_SCRIPTS:-$HOME/IWE/scripts}/artifactor.py" "$REQUEST"
+# exit 0 → JSON, используй routing_tag
+# exit 1 → INSUFFICIENT_INPUT, запросить уточнение у пилота
+# exit 2 → NO_KEYWORD_MATCH, применить LLM-классификацию из SKILL.md
+```
+
+Результат (`structured request` с `routing_tag`) передать обратно в Маршрутизатор. Триггер Артефактора: запрос расплывчат, нет чёткого скилла, нет РП-привязки. **Не вызывать исполнителя напрямую из Артефактора.**
 
 ### WP Gate (блокирующее)
 
@@ -48,26 +76,20 @@ description: "Протокол ОРЗ — пошаговые инструкци�
 
    **Race-guard:** если state-файл `.claude/state/wp-sync-<N>.done` существует И его mtime моложе 8 часов — пропустить (sync уже выполнен в этой сессии). Если файл есть, но mtime старше 8h — считать stale: `rm -f` и продолжить заново. Проверка: `find .claude/state/wp-sync-<N>.done -mmin -480 2>/dev/null` (пустой вывод = нет файла или stale → запускать; непустой = свежий → пропускать).
 
-   **Шаг 3a — Pre-flight (диагностика).** Перед основным запуском проверить, что bundler видит реальное окружение, а не тестовое:
-   ```bash
-   bash .claude/scripts/wp-sync-bundle.sh --self-test
-   ```
-   Exit 0 → окружение валидно, переходим к 3b. Exit 1 → окружение сломано (частая причина: env-переменные `IWE_WORKSPACE` / `IWE_GOVERNANCE_REPO` указывают на несуществующий путь) → **graceful degradation**: сбросить env (`unset IWE_WORKSPACE IWE_GOVERNANCE_REPO`) и повторить `--self-test`. Если снова fail → перейти к Ритуалу с пометкой «Sync-фаза требует ремонта (см. WP-294)».
-
-   **Шаг 3b — Bundle.** Запустить детерминированный сборщик контекста:
+   **Шаг 3a — Bundle.** Запустить детерминированный сборщик контекста:
    ```bash
    bash .claude/scripts/wp-sync-bundle.sh WP-N > /tmp/wp-sync-bundle-$$.md
    ```
    Exit 0 → читать вывод. Exit 1 → РП не найден → перейти к Ритуалу с пометкой «контекст не найден». Exit 2 → ошибка парсинга → перейти к Ритуалу, поднять stderr в «Требует внимания».
 
-   **Шаг 3c — Override (опционально).** `bash .claude/scripts/load-extensions.sh protocol-open sync` — exit 0 → `Read` файлы (alphabetic), они переопределяют дефолтное поведение шага 3d. Exit 1 → дефолт.
+   **Шаг 3b — Override (опционально).** `bash .claude/scripts/load-extensions.sh protocol-open sync` — exit 0 → `Read` файлы (alphabetic), они переопределяют дефолтное поведение шага 3c. Exit 1 → дефолт.
 
-   **Шаг 3d — Дефолтное поведение по веткам (если 3c не override'нул):**
+   **Шаг 3c — Дефолтное поведение по веткам (если 3b не override'нул):**
    - **Ветка A — тривиальный случай** (≤1 связанных РП И drift-сигналов нет): главный агент сам читает контекст текущего РП и патчит маркеры (`[ ]` → `[x]` для подзадач, ссылающихся на закрытые связанные РП).
    - **Ветка B — нетривиальный** (≥2 связанных РП ИЛИ есть drift-сигналы): делегировать через Task tool sub-agent'у `wp-sync-actualizer` (Sonnet 4.6, context isolation). Передать в prompt: номер WP-N + содержимое bundle. Sub-agent возвращает unified diff в формате `---ORIGINAL---`/`---REPLACEMENT---`. Главный агент применяет через Edit.
    - **Ветка C — противоречие** (sub-agent вернул раздел «Требует внимания» вместо diff'а, или нашёл «PASS» в одном связанном vs «FAIL» в другом по той же метрике): НЕ применять автоматически, поднять в «Требует внимания» Ритуала.
 
-   **Шаг 3e — Очистка:** `rm -f /tmp/wp-sync-bundle-$$.md`, `touch .claude/state/wp-sync-<N>.done`.
+   **Шаг 3d — Очистка:** `rm -f /tmp/wp-sync-bundle-$$.md`, `touch .claude/state/wp-sync-<N>.done`.
 
 4. → Ритуал.
 
@@ -94,11 +116,16 @@ description: "Протокол ОРЗ — пошаговые инструкци�
 > **Роль Claude:** [DP.ROLE.001]
 > **Работа:** [что]
 > **РП:** [артефакт]
+> **Режим (ТВС):** [текущее / важное / срочное] — по конвейерной модели ([[Текущее ≠ Важное ≠ Срочное (ТВС)]])
 > **Класс:** [verification_class]
 > **Метод:** [как]
 > **Оценка:** ~Xh
 > **Модель:** [текущая] — рекомендую [модель]
 > **Связки:** [таблица 🔴/🟡/🟢 или «изолированный РП»]
+
+**Гейты ПЕРЕД действием (когнитивные, не машинные — пир-сессия 2026-06-15-13, Block ARTF).** До регистрации/размещения прогнать готовый гейт, не «от руки»: (а) **имя РП/фазы** = существительное-артефакт через Артефактора (`/decompose`) + §9, не глагол-действие; (б) **размещение/перенос** артефакта — сверить с Routing Gate `DP.KR.001 §5` (мета `0.*` = транзит, не дом знания; постоянные дома = Паки + ядра A/B/C). Это напоминание, не enforcement: реальные замки — name-warn в commit-msg + (follow-up) серверный placement-гейт.
+
+**Режим ТВС (конвейерная модель):** текущее = штатная операционная работа (держит норму); важное = поднимает норму выше прежней (развитие, R{N}); срочное = угроза остановки конвейера (прод/биллинг упал, блокер). «Срочное» НЕ присваивается по дедлайну или по силе «горит» ([[Дедлайн ≠ Срочность]]) — только по физической угрозе остановки. Настоящее срочное обычно не идёт через Ритуал (прерывает и чинится), но фиксируется постфактум.
 
 **Класс верификации** (HD #32):
 
@@ -118,6 +145,8 @@ description: "Протокол ОРЗ — пошаговые инструкци�
 **Шаг 3.** Определить файлы/репо. Context file (`<governance-repo>/inbox/WP-{N}*.md`, например DS-strategy) — прочитать. Иерархия доверия: код → документы → WP context.
 
 **Шаг 4.** Регистрация в `<governance-repo>/inbox/open-sessions.log` (например DS-strategy): `YYYY-MM-DD HH:MM | WP-N | модель | описание`. Исключения — не регистрировать.
+
+**Шаг 4.5. Артефактор (автоматический).** Если класс ∈ {open-loop, problem-framing} И оценка ≥3h → выполнить `/artifactor` inline (без вопроса пользователю). Этапную карту вставить в WP context file (секция `## Этапы` в конец файла). Если класс trivial/closed-loop ИЛИ оценка <3h → пропустить молча.
 
 **EXTENSION POINT (protocol-open after):** `bash .claude/scripts/load-extensions.sh protocol-open after` — exit 0 → `Read` каждый файл из вывода (alphabetic) → выполнить. Exit 1 → пропустить. Поддерживает `extensions/protocol-open.after.md` И `extensions/protocol-open.after.<suffix>.md`.
 

@@ -1,10 +1,19 @@
 ---
 name: personal-guide-render
-description: Собирает (или пересобирает) персональное руководство в УЖЕ существующем репо `personal-guide` (плоское имя, один на пилота) — читает RCS из Память.Derived, выбирает заготовки stage×domain, пишет 6 файлов через personal_write. Используй когда пилот просит «пересобери руководство», «обнови мой план», «обнови methods» — или когда репо создан, а контента ещё нет.
+description: Builds (or rebuilds) the personal guide in an EXISTING personal-guide repo (flat name, one per pilot) — reads RCS from Memory.Derived, selects stage×domain templates, writes 6 files via personal_write. Use when pilot asks 'rebuild guide', 'update my plan', 'update methods' — or when repo is created but has no content yet.
 argument-hint: "[необязательно: override домена — knowledge-worker / generic] [необязательно: first-run — пропустить Шаг 5 архивации, используется при делегировании из /personal-guide-start]"
 experimental: true
 sunset: "после DONE WP-222 (Портной, ~июнь 2026) и WP-149 Ф6 (книга ЛР v3)"
 related: [WP-245, WP-222, WP-149, PD.FORM.089, PD.CAT.003, personal-guide-start]
+version: 1.0.0
+layer: L1
+status: active
+triggers:
+  slash: [/personal-guide-render]
+  phrases: []
+routing:
+  executor: sonnet
+  deterministic: false
 ---
 
 # Render персонального руководства
@@ -15,7 +24,7 @@ related: [WP-245, WP-222, WP-149, PD.FORM.089, PD.CAT.003, personal-guide-start]
 
 ## Контракт скилла
 
-- **Вход:** существующий GitHub-репо `personal-guide` под аккаунтом пилота (создаётся через `/personal-guide-start` или вручную; имя константно для всех пилотов — у каждого один личный аккаунт = один репо). Активная подписка «Бесконечное развитие» (DP.SC.112). Доступ к `dt_read_digital_twin`, `personal_write`.
+- **Вход:** существующий GitHub-репо `personal-guide` под аккаунтом пилота (создаётся через `/personal-guide-start` или вручную; имя константно для всех пилотов — у каждого один личный аккаунт = один репо). Активная подписка «Инженерия интеллекта» (ранее «Бесконечное развитие») (DP.SC.112). Доступ к `dt_read_digital_twin`, `personal_write`.
 - **Выход:** 6 файлов (`README.md`, `profile.md`, `worldview.md`, `methods.md`, `weekly/<YYYY-Www>.md`, `daily/<YYYY-MM-DD>.md`) перезаписаны актуальной версией под текущий RCS+домен. Прежние weekly/daily при пересборке — в `history/` (не удаляются). При первом запуске (`first-run`) дополнительно — раздача 5 скиллов в `.claude/skills/` пилотского репо (см. Шаг 6.7), чтобы они работали в любом канале Claude Code включая `claude.ai/code`.
 - **Время:** ≤5 мин на пересборку (без диалога), ≤15 мин с диалогом сбора недостающего профиля.
 - **Не делает:** не создаёт репо (это `/personal-guide-start`); не считает баллы (WP-109/WP-121); не запускает по расписанию (Портной, WP-222).
@@ -130,6 +139,8 @@ stage_raw = min(W.baseline, M1.baseline, M2.baseline, M4.baseline)
 
 Из «Блок → worldview.md» ступенной заготовки. Подставь `{phase}`. В конце +1 строка: «Мемы в работе на этой неделе: [dissatisfactions]».
 
+**В начало файла, до блока ступенной заготовки** — вставить открывающий нарратив 4 уровней превращения (источник: [PD.FORM.137 §2](`PACK-personal/pack/personal-development/02-domain-entities/formalizations/PD.FORM.137-narrative-4-levels.md`), таблица 4 уровней). Цитировать через включение таблицы с маркером `<!-- source: PD.FORM.137 §2 -->` (не копировать verbatim §2 целиком, только таблицу 4 уровней + 1-предложенческое определение). Это outcome-frame для входящего пилота; основной блок worldview.md (stage-frame) — для пилота уже внутри программы. На ступенях 1-2 без явного запроса не разворачивать §3 (двойственная роль) — это потолок Создателя, преждевременный для Случайного/Практикующего.
+
 ### 6.4. `methods.md`
 
 Из «Блок → methods.md» ступенной заготовки для конкретного bottleneck (выбери ветку). + таблица «Типы работ, в которые встраиваются методы» из доменной вставки.
@@ -197,6 +208,8 @@ personal_write(
 - Ответ на «Что узнал» (раздел 3) → сигнал для PD.FORM.087 фазового перехода (Шаг 2 проверки ступени).
 - Ответ на «Что завтра» (раздел 5) → input для пересборки `daily/<завтра>.md` (Шаг 6.6).
 
+**Failure mode:** если `history/reflection-template.md` не записался — `daily/`, `weekly/` всё равно создаются. Не блокер.
+
 ## Шаг 7. Подтверждение пилоту
 
 ```
@@ -228,3 +241,6 @@ Bottleneck: {bottleneck}.
 - Не читает коммиты/метрики — WP-203 Оркестратор.
 
 Когда Портной (WP-222) выйдет — этот скилл уйдёт в архив.
+
+<!-- USER-SPACE -->
+<!-- /USER-SPACE -->

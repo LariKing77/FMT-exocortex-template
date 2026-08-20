@@ -1,6 +1,7 @@
 ---
-valid_from: 2026-04-06
+valid_from: 2026-06-10
 originSessionId: 9a0e726a-951e-4408-9e02-94d7eeffbf74
+last_sync_commit: 093d30e
 
 type: reference
 horizon: warm
@@ -14,7 +15,8 @@ description: "Справочник FPF паттернов применимых �
 ---
 # FPF (First Principles Framework) — справочник
 
-> Источник: `{{HOME_DIR}}/IWE/FPF/FPF-Spec.md` (4.6 MB, ~50000 строк)
+> Источник: `{{HOME_DIR}}/IWE/FPF/FPF-Spec.md` (4.6 MB, ~83000 строк, commit `093d30e`)
+> Автообновление: см. WP-364 Direction 1 «Конвейер синхронизации FPF upstream»
 
 ## Когда читать FPF
 
@@ -26,7 +28,7 @@ description: "Справочник FPF паттернов применимых �
 ## Как читать
 
 - НЕ читать целиком
-- Сначала оглавление (первые 200 строк), потом нужную секцию
+- Сначала оглавление (первые 300 строк), потом нужную секцию
 - Grep для конкретных паттернов (например, `A.7` для Strict Distinction)
 
 ## Структура FPF
@@ -46,10 +48,22 @@ description: "Справочник FPF паттернов применимых �
 | C.11 | Decision Theory (Decsn-CAL) | Stable | Выбор альтернатив в ArchGate, Strategy Session |
 | C.16 | MM-CHR Measurement & Metrics | Stable | Измерения RCS, baseline, показатели пилота |
 | C.19 | Explore–Exploit Governor | Stable | Pool-политика экспериментов и методов |
+| C.21 | Discipline-CHR (Field Health & Structure) | Stable | Здоровье научного поля, воспроизводимость, стандартизация |
 | C.24 | Agentic Tool-Use & Call-Planning | Stable | Протокол Claude Code tool-use бюджет |
 | C.26 | Quantum-Like Modeling Lens | Stable | Probe-coupled взаимодействия, order effects |
 | C.27 | Temporal Claim Adequacy | Stable | Утверждения о скорости, ритме, трендах |
 | C.28 | **CausalUse-CAL** | Stable | **Причинные утверждения: M1 улучшает X, рычаг даёт Y** |
+
+### Новые и обновлённые паттерны (май–июнь 2026)
+
+| Код | Название | Статус | Почему важно для IWE |
+|-----|----------|--------|---------------------|
+| C.2.P | Epistemic Precision Restoration | Stable | Восстановление точности эпистемы: EntityOfConcern, ClaimGraph, Viewpoint |
+| A.19.ECS | Evaluation CharacteristicSpace Construction | Stable | Построение пространства характеристик для оценки объектов |
+| A.19.SPR | State-Family Precision Restoration | Stable | Восстановление точности состояний: status, posture, readiness |
+| E.18.1 | Principles-to-Work Transduction Path (P2W) | Stable | Как принципы переносятся в работу без преждевременного выбора метода |
+| E.21 | FPF Pattern-Quality Evaluation CharacteristicSpace | Stable | Оценка качества паттернов FPF для declared reader/use/scope |
+| F.19 | Ontology-First Plain Technical Rewriting | Stable | Онтология-first переписывание: phrase apparatus, boilerplate, negative catalogue |
 
 ## Системная терминология
 
@@ -58,6 +72,7 @@ description: "Справочник FPF паттернов применимых �
 | Надсистема | Suprasystem | Содержит SoI (∋) |
 | Целевая система | System-of-Interest (SoI) | То, что создаём |
 | Система создания | Constructor | Создаёт SoI (→) |
+| Объект озабоченности | EntityOfConcern | То, о чём речь в эпистеме; ≠ Description |
 
 ## Универсальные различения
 
@@ -71,6 +86,7 @@ description: "Справочник FPF паттернов применимых �
 | Знание ≠ Обучение | Pack vs курс |
 | Знание ≠ Информация | Формализовано vs сырые данные |
 | Виды ≠ Характеристики | Классификация vs измеряемое качество |
+| EntityOfConcern ≠ Description | Объект озабоченности ≠ его описание (A.7, A.6.2–A.6.4) |
 
 ## Принципы работы
 
@@ -78,9 +94,10 @@ description: "Справочник FPF паттернов применимых �
 |---------|-----|----------|
 | Холонический подход | A.1 | Всё — часть и целое одновременно |
 | Ограниченный контекст | A.1.1 | Термин определён в границах контекста |
-| Строгие различения | A.7 | Роль ≠ Метод ≠ Работа |
+| Строгие различения | A.7 | Роль ≠ Метод ≠ Работа; EntityOfConcern ≠ Description |
 | ADI-цикл | B.5 | Абдукция → Дедукция → Индукция |
 | CausalUse-CAL | C.28 | Причинные утверждения: рунг, доказательная база, допустимое использование |
+| Epistemic Precision Restoration | C.2.P | Восстановление точности эпистемических формулировок |
 
 ## C.28 CausalUse-CAL — практическое применение в IWE
 
@@ -114,7 +131,7 @@ description: "Справочник FPF паттернов применимых �
 |---------|----------------|---------|
 | WP-151 рычаги (M1/M4) | «M1 поднимает собранность» — рунг 2 без доказательства | Переписать как рунг 1: «ассоциировано с ростом baseline в выборке N» |
 | Портной рекомендации | «Добавь помидоры — улучшишь ступень» — rung 2 pretend | Добавить: «по корреляции в N=k пилотов, интервенционных данных нет» |
-| ArchGate аргументы | «Если внедрить X, получим Y» — rung 3 без SCM | Явно указать рунг, basis, unsupportedUse |
+| ArchGate аргументы | «Если внедрить X, получим Y» — рунг 3 без SCM | Явно указать рунг, basis, unsupportedUse |
 | Strategy Session | «Эта практика сработала в апреле» | Rung 1 (ассоциация), rival causes не исключены |
 | Измерения dt_snapshot_rcs | Snapshot ≠ каузальное доказательство | basis = observationalAssociation, не interventional |
 
@@ -130,13 +147,21 @@ description: "Справочник FPF паттернов применимых �
 | Bounded Context (A.1.1) | Контекст с чётким scope: свой язык, свои правила | DDD, микросервисы |
 | F-G-R (Fact/Guess/Rumor) | Факт / предположение / слух — уровень доверия к данным | B.3 — оценка решений |
 | Role ≠ Method ≠ Work (A.7) | Кто делает ≠ как делает ≠ конкретное выполнение | Проектирование процессов |
+| Role Assignment (A.2.1) | Система в роли: `система#роль:контекст` — функциональное участие системы; роль сама не работает | Pack-онтология ролей, distinctions.md HD #26 |
+| Service Polysemy (A.6.8) | Сервис = обещание + провайдерская роль + метод оказания + работа оказания + свидетельства. Сервис ≠ метод | DP сервисы MAP.002 vs FPF ситуация оказания |
+| Mastery as Role (A.2) | Мастерство::роль — роль части экзокортекса/организма в деятельности. ≠ степень мастерства (характеристика) | PACK-personal cp.skl, distinctions.md HD #32 |
 | Alpha | Ключевой рабочий продукт, по которому отслеживается прогресс | Управление проектами |
 | Mereology | Отношение «часть-целое» между компонентами | Архитектура, composition |
 | Affordance | Что компонент позволяет делать пользователю | API design, UX |
 | ADI-цикл (B.5) | Гипотеза → проверка логикой → проверка данными | Принятие решений (/think) |
 | Lawful Comparison (A.19) | Сравнение вариантов по одинаковым критериям | Выбор архитектуры (/archgate) |
 | Strict Distinction (A.7) | Разные вещи — разные имена. Не смешивать в одном типе/enum | Code review, именование |
+| EntityOfConcern | Объект озабоченности — то, о чём речь в эпистеме; ≠ Description | C.2.P, A.6.2–A.6.4 |
+| P2W (E.18.1) | Principles-to-Work: как принципы становятся работой без выбора метода | Стратегические сессии, ArchGate |
+| ECS (A.19.ECS) | Evaluation CharacteristicSpace: пространство характеристик оценки | Метрики, benchmark, QA |
 
 ## Обновление
 
-Периодически: `cd {{HOME_DIR}}/IWE/FPF && git pull`
+- **Ручное:** `cd {{HOME_DIR}}/IWE/FPF && git pull`
+- **Автоматическое:** WP-364 Direction 1 «Конвейер синхронизации FPF upstream» — еженедельный delta-report + автообновление кеша
+- **Текущая версия:** sync commit `093d30e` (2026-06-08)
